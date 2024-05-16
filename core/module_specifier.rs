@@ -109,14 +109,14 @@ pub fn resolve_url(
 /// e.g. 'http:' or 'file:' or 'git+ssh:'. If not, it's interpreted as a
 /// file path; if it is a relative path it's resolved relative to passed
 /// `current_dir`.
-pub fn resolve_url_or_path(
+pub fn resolve_url_or_path<'a>(
   specifier: &str,
-  current_dir: &Path,
+  current_dir: impl FnOnce() -> &'a Path,
 ) -> Result<ModuleSpecifier, ModuleResolutionError> {
   if specifier_has_uri_scheme(specifier) {
     resolve_url(specifier)
   } else {
-    resolve_path(specifier, current_dir)
+    resolve_path(specifier, current_dir())
   }
 }
 
@@ -422,7 +422,7 @@ mod tests {
     }
 
     for (specifier, expected_url) in tests {
-      let url = resolve_url_or_path(specifier, &cwd).unwrap().to_string();
+      let url = resolve_url_or_path(specifier, || &cwd).unwrap().to_string();
       assert_eq!(url, expected_url);
     }
   }
@@ -442,8 +442,8 @@ mod tests {
     }
 
     for (specifier, expected_err) in tests {
-      let err =
-        resolve_url_or_path(specifier, &PathBuf::from("/")).unwrap_err();
+      let cwd = PathBuf::from("/");
+      let err = resolve_url_or_path(specifier, || &cwd).unwrap_err();
       assert_eq!(err, expected_err);
     }
   }
